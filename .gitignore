@@ -40,6 +40,7 @@
 
 # Inno Setup
 setup.iss
+installer/Output/
 
 # Delphi compiler-generated binaries (safe to delete)
 *.exe

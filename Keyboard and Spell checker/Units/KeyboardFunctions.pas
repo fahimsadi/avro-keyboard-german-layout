@@ -33,11 +33,13 @@ function IsWinKey: Boolean;
 function IsOnlyLeftAltKey: Boolean;
 function IsOnlyCtrlKey: Boolean;
 function IsIgnorableModifierKey(const KeyCode: Integer): Boolean;
+function TranslateKeyCode(const KeyCode: Integer; out KeyText: string): Boolean;
 
 implementation
 
 uses
-  DebugLog;
+  DebugLog,
+  VirtualKeyCode;
 
 { =============================================================================== }
 
@@ -164,6 +166,76 @@ begin
 
   // Effective shift state is true if (physical shift is pressed XOR caps lock is on)
   Result := isPhysicalShiftPressed xor isCapsToggledActuallyOn;
+end;
+
+{ =============================================================================== }
+
+function GetForegroundKeyboardLayout: HKL;
+var
+  ForegroundWindow: HWND;
+begin
+  ForegroundWindow := GetForegroundWindow;
+  if ForegroundWindow = 0 then
+    Exit(GetKeyboardLayout(0));
+
+  Result := GetKeyboardLayout(GetWindowThreadProcessId(ForegroundWindow, nil));
+end;
+
+{ =============================================================================== }
+
+procedure SetPressedKeyState(var KeyState: array of Byte; const KeyCode: Integer);
+begin
+  if IsKeyDown(KeyCode) then
+    KeyState[KeyCode] := $80;
+end;
+
+{ =============================================================================== }
+
+function TranslateKeyCode(const KeyCode: Integer; out KeyText: string): Boolean;
+var
+  KeyboardState, EmptyKeyboardState: array [0 .. 255] of Byte;
+  Buffer, FlushBuffer: array [0 .. 7] of WideChar;
+  KeyboardLayout: HKL;
+  ScanCode, CharacterCount: Integer;
+begin
+  Result := False;
+  KeyText := '';
+
+  if not (((KeyCode >= Ord('0')) and (KeyCode <= Ord('9'))) or ((KeyCode >= Ord('A')) and (KeyCode <= Ord('Z'))) or
+      (KeyCode in [VK_OEM_1, VK_OEM_2, VK_OEM_3, VK_OEM_4, VK_OEM_5, VK_OEM_6, VK_OEM_7, VK_OEM_8, VK_OEM_102,
+      VK_OEM_PLUS, VK_OEM_COMMA, VK_OEM_MINUS, VK_OEM_PERIOD])) then
+    Exit;
+
+  FillChar(KeyboardState, SizeOf(KeyboardState), 0);
+  SetPressedKeyState(KeyboardState, VK_SHIFT);
+  SetPressedKeyState(KeyboardState, VK_LSHIFT);
+  SetPressedKeyState(KeyboardState, VK_RSHIFT);
+  SetPressedKeyState(KeyboardState, VK_CONTROL);
+  SetPressedKeyState(KeyboardState, VK_LCONTROL);
+  SetPressedKeyState(KeyboardState, VK_RCONTROL);
+  SetPressedKeyState(KeyboardState, VK_MENU);
+  SetPressedKeyState(KeyboardState, VK_LMENU);
+  SetPressedKeyState(KeyboardState, VK_RMENU);
+  if IsKeyToggledOn(VK_CAPITAL) then
+    KeyboardState[VK_CAPITAL] := $01;
+
+  KeyboardLayout := GetForegroundKeyboardLayout;
+  ScanCode := MapVirtualKeyEx(KeyCode, MAPVK_VK_TO_VSC_EX, KeyboardLayout);
+  CharacterCount := ToUnicodeEx(KeyCode, ScanCode, @KeyboardState[0], @Buffer[0], Length(Buffer), 0, KeyboardLayout);
+  if CharacterCount = 0 then
+    Exit;
+
+  if CharacterCount < 0 then
+  begin
+    // ToUnicodeEx retains a dead-key state. Flush it so Avro receives the accent itself.
+    FillChar(EmptyKeyboardState, SizeOf(EmptyKeyboardState), 0);
+    ToUnicodeEx(VK_SPACE, MapVirtualKeyEx(VK_SPACE, MAPVK_VK_TO_VSC_EX, KeyboardLayout), @EmptyKeyboardState[0], @FlushBuffer[0],
+      Length(FlushBuffer), 0, KeyboardLayout);
+    CharacterCount := 1;
+  end;
+
+  SetString(KeyText, PWideChar(@Buffer[0]), CharacterCount);
+  Result := KeyText <> '';
 end;
 
 { =============================================================================== }

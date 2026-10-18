@@ -487,8 +487,21 @@ end;
 { =============================================================================== }
 
 procedure TE2BCharBased.MyProcessVKeyDown(const KeyCode: Integer; var Block: boolean; const var_IsLogicalShift, var_IsTrueShift: boolean);
+var
+  KeyText: string;
 begin
   Block := False;
+
+  if TranslateKeyCode(KeyCode, KeyText) then
+  begin
+    if (KeyText = '|') and (PipeToDot = 'YES') then
+      AddStr('.`')
+    else
+      AddStr(KeyText);
+    Block := True;
+    Exit;
+  end;
+
   case KeyCode of
     VK_DECIMAL:
       begin
@@ -1381,7 +1394,7 @@ var
 begin
   m_Block := False;
 
-  if (IsControl = True) or (IsAlter = True) or (IsWinKey = True) then
+  if (((IsControl = True) or (IsAlter = True)) and (not IsAltGr)) or (IsWinKey = True) then
   begin
     Block := False;
     BlockLast := False;

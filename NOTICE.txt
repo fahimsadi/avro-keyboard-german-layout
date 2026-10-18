@@ -1,0 +1,19 @@
+Avro Keyboard - German Layout
+================================
+
+This is an unofficial community build of Avro Keyboard that adds support for
+using Avro Phonetic with a German physical keyboard layout.
+
+Original Avro Keyboard copyright is retained by OmicronLab and other original
+contributors. This build is based on the modernized Avro Keyboard source made
+available at https://github.com/mugli/Avro-Keyboard.
+
+The Avro Keyboard source code and the German-layout modifications are licensed
+under the Mozilla Public License, version 2.0. See LICENSE.txt for the full
+license text.
+
+The complete source code for this build is published at:
+https://github.com/fahimsadi/avro-keyboard-german-layout
+
+The release tag identifies the exact corresponding source revision. This project
+is not affiliated with or endorsed by OmicronLab.
